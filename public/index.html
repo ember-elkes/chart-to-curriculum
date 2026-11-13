@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Chart to curriculum</title>
+<meta name="description" content="Paste an MIT degree chart, check every course against MIT OpenCourseWare, and build a plan that satisfies the requirements.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%23172033'/%3E%3Crect x='5' y='9' width='9' height='14' rx='2' fill='%2316796f'/%3E%3Crect x='18' y='9' width='9' height='14' rx='2' fill='none' stroke='%23fff' stroke-width='2' stroke-dasharray='3 2'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Schibsted+Grotesk:wght@400;500;600&family=Spectral:wght@400;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/app.css">
+</head>
+<body>
+<a class="skip" href="#catalog">Skip to courses</a>
+
+<header class="masthead">
+  <div class="wrap">
+    <h1>Chart to curriculum</h1>
+    <p class="lede">Paste an MIT degree chart. We read its requirements, check every course against OpenCourseWare, and keep count while you build a plan.</p>
+    <form id="loadForm" class="load" novalidate>
+      <label for="chartUrl" class="sr">Degree chart address</label>
+      <input id="chartUrl" name="url" type="text" inputmode="url" autocomplete="off" spellcheck="false" placeholder="https://catalog.mit.edu/degree-charts/literature-course-21l/">
+      <button class="btn primary" type="submit">Read chart</button>
+    </form>
+    <p class="try">Try one:
+      <button type="button" class="link" data-url="https://catalog.mit.edu/degree-charts/literature-course-21l/">Literature, Course 21L</button>
+      <button type="button" class="link" data-url="https://catalog.mit.edu/degree-charts/anthropology-course-21a/">Anthropology, Course 21A</button>
+    </p>
+    <p id="loadMsg" class="loadmsg" role="status" aria-live="polite"></p>
+  </div>
+</header>
+
+<main id="app" class="wrap layout" hidden>
+  <aside class="ledger" aria-label="Requirements and your plan">
+    <div class="ledger-head">
+      <h2 id="chartTitle"></h2>
+      <a id="chartLink" href="#" target="_blank" rel="noopener">Open the chart</a>
+    </div>
+    <div id="summary" class="summary"></div>
+    <div id="notice"></div>
+    <ol id="rules" class="rules"></ol>
+    <div class="rule-actions">
+      <button type="button" class="btn quiet" data-action="add-rule">Add a rule</button>
+      <button type="button" class="btn quiet" data-action="reset-rules">Reset to chart rules</button>
+    </div>
+
+    <h3 class="plan-h">Your plan</h3>
+    <ul id="plan" class="plan"></ul>
+
+    <div class="exports">
+      <button type="button" class="btn" data-action="copy-notion">Copy for Notion</button>
+      <button type="button" class="btn" data-action="copy-list">Copy as list</button>
+      <button type="button" class="btn" data-action="copy-link">Copy share link</button>
+      <button type="button" class="btn" data-action="print">Print or save as PDF</button>
+    </div>
+    <p class="fineprint">Course materials belong to MIT OpenCourseWare (CC BY-NC-SA). This tool isn't affiliated with MIT, and finishing a plan doesn't earn MIT credit.</p>
+  </aside>
+
+  <section id="catalog" class="catalog" aria-label="Courses in this chart">
+    <div class="toolbar">
+      <label class="sr" for="q">Search courses</label>
+      <input id="q" type="search" placeholder="Search by number or title" autocomplete="off">
+      <label class="check"><input id="ocwOnly" type="checkbox" checked> Only courses on OCW</label>
+      <label class="sort">Sort by
+        <select id="sort"><option value="code">Course number</option><option value="title">Title</option></select>
+      </label>
+    </div>
+    <div id="chips" class="chips" role="group" aria-label="Filter courses"></div>
+    <p id="count" class="count" role="status" aria-live="polite"></p>
+    <ul id="courses" class="courses"></ul>
+  </section>
+</main>
+
+<dialog id="matchDialog" aria-labelledby="mdTitle">
+  <form method="dialog" class="md-close"><button class="btn quiet" aria-label="Close">Close</button></form>
+  <h2 id="mdTitle">Match to OpenCourseWare</h2>
+  <div id="mdBody"></div>
+</dialog>
+
+<div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+<script src="/engine.js"></script>
+<script src="/app.js"></script>
+</body>
+</html>

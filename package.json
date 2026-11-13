@@ -1,0 +1,19 @@
+{
+  "name": "chart-to-curriculum",
+  "version": "1.0.0",
+  "description": "Paste an MIT degree chart URL, match its courses against MIT OpenCourseWare, and build a plan that satisfies the chart.",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "test": "node --test test/*.test.js",
+    "snapshot": "node scripts/snapshot.js",
+    "demo": "node test/dev-server.js"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "express": "^4.19.2",
+    "jsdom": "^24.1.0"
+  }
+}
