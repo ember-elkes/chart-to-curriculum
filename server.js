@@ -7,7 +7,7 @@ const express = require('express');
 const fs = require('fs/promises');
 const path = require('path');
 const { JSDOM } = require('jsdom');
-const { parseDegreeChart } = require('./lib/parser');
+const { parseDegreeChartTracks } = require('./lib/parser');
 const ocw = require('./lib/ocw');
 
 const WEEK = 7 * 24 * 3600 * 1000;
@@ -29,7 +29,8 @@ function normalizeChartUrl(input) {
 function httpError(status, message) { const e = new Error(message); e.status = status; return e; }
 
 function deptCodeOf(chart, url) {
-  const m = (chart.title || '').match(/Course\s+([0-9A-Za-z]+)\)/) || url.match(/course-([0-9a-z]+)\/?$/i);
+  // "Course 21L", "Course 24-2" (a track of Course 24), "course-6-3" -> department is the part before any "-<digit>"
+  const m = (chart.title || '').match(/Course\s+([0-9A-Za-z]+?)(?:-\d+)?\)/) || url.match(/course-([0-9a-z]+?)(?:-\d+)?\/?$/i);
   return m ? m[1].toUpperCase() : null;
 }
 
@@ -68,7 +69,7 @@ function createApp({ fetchFn = fetch, dataDir = process.env.DATA_DIR || path.joi
   const chartCache = new Map();
   async function getChart(url) {
     const hit = chartCache.get(url);
-    if (hit && now() - hit.at < 3600e3) return hit.chart;
+    if (hit && now() - hit.at < 3600e3) return hit.tracks;
     const res = await fetchFn(url, { headers: { 'User-Agent': 'chart-to-curriculum/1.0 (personal study tool)' }, signal: AbortSignal.timeout(15000) }).catch(() => null);
     if (!res) throw httpError(502, 'Couldn\'t reach catalog.mit.edu. Try again in a minute.');
     if (res.status === 404) throw httpError(404, 'That degree chart doesn\'t exist. Check the address.');
@@ -76,10 +77,10 @@ function createApp({ fetchFn = fetch, dataDir = process.env.DATA_DIR || path.joi
     const html = await res.text();
     if (html.length > 3e6) throw httpError(422, 'That page is too large to be a degree chart.');
     const doc = new JSDOM(html).window.document;
-    const chart = parseDegreeChart(doc);
-    if (!chart.groups.some((g) => g.items.length)) throw httpError(422, 'That page doesn\'t contain a degree chart table we can read.');
-    chartCache.set(url, { at: now(), chart });
-    return chart;
+    const tracks = parseDegreeChartTracks(doc).filter((t) => t.chart.groups.some((g) => g.items.length));
+    if (!tracks.length) throw httpError(422, 'That page doesn\'t contain a degree chart table we can read.');
+    chartCache.set(url, { at: now(), tracks });
+    return tracks;
   }
 
   // ---- tiny per-IP rate limit on the API ----
@@ -95,10 +96,12 @@ function createApp({ fetchFn = fetch, dataDir = process.env.DATA_DIR || path.joi
   app.get('/api/chart', async (req, res) => {
     try {
       const url = normalizeChartUrl(req.query.url);
-      const [chart, index] = await Promise.all([getChart(url), getIndex().catch(() => { throw httpError(503, 'The OpenCourseWare course list isn\'t available yet. Try again shortly.'); })]);
+      const [tracks, index] = await Promise.all([getChart(url), getIndex().catch(() => { throw httpError(503, 'The OpenCourseWare course list isn\'t available yet. Try again shortly.'); })]);
+      const picked = tracks.find((t) => t.id === req.query.track) || tracks[0];
+      const chart = picked.chart;
       const deptCode = deptCodeOf(chart, url);
       const deptCourses = deptCode ? index.courses.filter((c) => c.dept === deptCode).map(ocw.view) : [];
-      res.json({ url, chart, matches: ocw.matchChart(chart, index), deptCode, deptCourses, ocwUpdated: meta.updated });
+      res.json({ url, tracks: tracks.map((t) => ({ id: t.id, label: t.label })), track: picked.id, chart, matches: ocw.matchChart(chart, index), deptCode, deptCourses, ocwUpdated: meta.updated });
     } catch (e) {
       res.status(e.status || 500).json({ error: e.status ? e.message : 'Something went wrong reading that chart.' });
       if (!e.status) console.error(e);

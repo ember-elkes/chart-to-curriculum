@@ -73,7 +73,11 @@
       // Only table groups under an explicit area header ("Required Subjects") are required lists.
       // Section lists ("Introductory Subjects", "Subjects focusing on pre-1900 texts") are pools of options, not requirements.
       if (fixed.length && g.kind === 'requirement' && !g.tag) {
-        rules.push({ id: `g${gi}-all`, source: 'chart', label: `${g.title || 'Required'}: take all ${fixed.length}`, detail: fixed.map((i) => i.code).join(', '), kind: 'all', count: fixed.length, pool: { type: 'codes', value: fixed.map((i) => canon(i.code)) } });
+        // "24.900 / or 24.9000" rows are one requirement that either subject satisfies
+        const primaries = fixed.filter((i) => !i.altOf);
+        const groups = primaries.map((p) => [canon(p.code), ...fixed.filter((a) => a.altOf === p.code).map((a) => canon(a.code))]);
+        const text = primaries.map((p) => [p.code, ...fixed.filter((a) => a.altOf === p.code).map((a) => a.code)].join(' or ')).join(', ');
+        rules.push({ id: `g${gi}-all`, source: 'chart', label: `${g.title || 'Required'}: take all ${primaries.length}`, detail: text, kind: 'all', count: primaries.length, pool: { type: 'codes', value: fixed.map((i) => canon(i.code)) }, ...(groups.some((x) => x.length > 1) ? { groups } : {}) });
       }
       g.items.filter((i) => i.type === 'slots' && i.count).forEach((it, si) => {
         rules.push({ id: `g${gi}-slots${si}`, source: 'chart', label: `${deptCode ? deptCode + ': ' : ''}${it.count} more subjects`, detail: it.text, kind: 'min', count: it.count, pool: deptCode ? { type: 'dept', value: deptCode } : { type: 'all' } });
@@ -127,7 +131,7 @@
   function effectiveRules(model, state) {
     const base = model.rules.filter((r) => !(state.rules[r.id] && state.rules[r.id].removed)).map((r) => {
       const e = state.rules[r.id] || {};
-      return { ...r, count: e.count != null ? e.count : r.count, kind: e.kind || r.kind, pool: e.pool || r.pool, edited: !!state.rules[r.id], unconfirmed: e.confirmed ? false : r.unconfirmed };
+      return { ...r, groups: e.pool || e.kind ? undefined : r.groups, count: e.count != null ? e.count : r.count, kind: e.kind || r.kind, pool: e.pool || r.pool, edited: !!state.rules[r.id], unconfirmed: e.confirmed ? false : r.unconfirmed };
     });
     return base.concat(state.manualRules.map((r) => ({ ...r, source: 'manual', edited: true })));
   }
@@ -153,8 +157,12 @@
     const planSet = new Set(planKeys);
     const results = effectiveRules(model, state).map((rule) => {
       const pool = members(rule, model);
-      const mine = pool.filter((k) => planSet.has(k));
-      const need = rule.kind === 'all' ? pool.length : rule.count;
+      let mine = pool.filter((k) => planSet.has(k));
+      let need = rule.kind === 'all' ? pool.length : rule.count;
+      if (rule.kind === 'all' && rule.groups) { // one counted subject per requirement, however many "or" options are in the plan
+        need = rule.groups.length;
+        mine = rule.groups.map((g) => g.find((k) => planSet.has(k))).filter(Boolean);
+      }
       const have = mine.length;
       const ok = rule.kind === 'max' ? have <= need : have >= need;
       return { rule, pool, mine, have, need, ok, over: rule.kind === 'max' ? have > need : rule.kind === 'all' ? false : false, poolSize: pool.length };
@@ -193,8 +201,8 @@
   }
 
   // ---------- share link ----------
-  function encodeState(url, state) {
-    const json = JSON.stringify({ u: url, p: state.plan, o: state.overrides, r: state.rules, m: state.manualRules });
+  function encodeState(url, state, track) {
+    const json = JSON.stringify({ u: url, t: track || undefined, p: state.plan, o: state.overrides, r: state.rules, m: state.manualRules });
     const b64 = typeof Buffer !== 'undefined' ? Buffer.from(json, 'utf8').toString('base64') : btoa(unescape(encodeURIComponent(json)));
     return b64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
   }
@@ -203,7 +211,7 @@
       const b64 = str.replace(/-/g, '+').replace(/_/g, '/');
       const json = typeof Buffer !== 'undefined' ? Buffer.from(b64, 'base64').toString('utf8') : decodeURIComponent(escape(atob(b64)));
       const d = JSON.parse(json);
-      return { url: d.u, state: { plan: d.p || [], overrides: d.o || {}, rules: d.r || {}, manualRules: d.m || [] } };
+      return { url: d.u, track: d.t || '', state: { plan: d.p || [], overrides: d.o || {}, rules: d.r || {}, manualRules: d.m || [] } };
     } catch { return null; }
   }
 

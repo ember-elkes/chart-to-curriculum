@@ -102,6 +102,26 @@ with sync_playwright() as p:
     page.screenshot(path=f'{OUT}/5-mobile.png', full_page=False)
     overflow = page.evaluate('document.documentElement.scrollWidth > document.documentElement.clientWidth')
     check('no horizontal scroll on mobile', not overflow)
+    # two-track chart (Course 24-2): switcher appears, tracks differ, choice survives a reload
+    U24 = 'https://catalog.mit.edu/degree-charts/linguistics-philosophy-course-24-2/'
+    page.fill('#chartUrl', U24); page.click('text=Read chart')
+    page.wait_for_selector('#tracks:not([hidden]) .chip')
+    check('24-2 shows a track switcher', page.locator('#tracks .chip').all_inner_texts() == ['Linguistics', 'Philosophy'])
+    check('24-2 starts on the first track', page.locator('#tracks .chip[aria-pressed=true]').inner_text() == 'Linguistics')
+    ling = page.locator('.rule-label').all_inner_texts()
+    check('24-2 treats "24.900 or 24.9000" as one requirement', any('take all 3' in l for l in ling), ling)
+    page.screenshot(path=f'{OUT}/5-24-2-linguistics.png')
+    page.click('#tracks .chip:has-text("Philosophy")')
+    page.wait_for_function("document.querySelector('#tracks .chip[aria-pressed=true]').textContent === 'Philosophy'")
+    phil = page.locator('.rule-label').all_inner_texts()
+    check('Philosophy track has its own rules', phil != ling and any('take all 2' in l for l in phil) and any('4 more subjects' in l for l in phil), phil)
+    page.reload(); page.wait_for_selector('#tracks .chip[aria-pressed=true]')
+    check('last-used track is remembered', page.locator('#tracks .chip[aria-pressed=true]').inner_text() == 'Philosophy')
+    page.screenshot(path=f'{OUT}/6-24-2-philosophy.png')
+    page.fill('#chartUrl', 'https://catalog.mit.edu/degree-charts/anthropology-course-21a/'); page.click('text=Read chart')
+    page.wait_for_selector('#chartTitle:has-text("Anthropology")')
+    check('single-track charts have no switcher', page.locator('#tracks').is_hidden())
+
     b.close()
 
 errors=[e for e in errors if 'status of 400' not in e]

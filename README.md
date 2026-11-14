@@ -42,6 +42,9 @@ npm start          # http://localhost:3000
 - Half-length subjects (such as 21L "Samplings") count as one subject. Change the count in the rule editor if your chart treats them differently.
 - Unit totals use the units shown in the chart. Open slots filled with OCW courses have no unit count, so totals show as "12+".
 - About half of some charts' courses aren't on OCW. They're hidden by default; untick **Only courses on OCW** to see them.
+- Charts with several tracks (for example Linguistics and Philosophy, 24-2) show a switch under the title. Each track keeps its own plan.
+- An "or" row in a chart (24.900 or 24.9000) counts as one requirement that either subject meets.
+- Open-slot rules such as "at least two of which must be in Linguistics and Philosophy" count every department subject in your plan. Add a rule if you want to check the sub-requirement.
 - Other universities' charts aren't supported. The parser expects the MIT catalog's markup.
 
 Course materials belong to MIT OpenCourseWare (CC BY-NC-SA). This project isn't affiliated with MIT.

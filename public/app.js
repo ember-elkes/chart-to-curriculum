@@ -5,25 +5,25 @@
   const cap = (s) => (s ? s[0].toUpperCase() + s.slice(1) : '');
   const byCode = (a, b) => a.code.localeCompare(b.code, undefined, { numeric: true });
 
-  const S = { url: null, model: null, st: E.newState(), ui: { facet: 'all', q: '', sort: 'code', ocwOnly: true, editing: null }, dlg: null };
+  const S = { url: null, track: '', tracks: [], model: null, st: E.newState(), ui: { facet: 'all', q: '', sort: 'code', ocwOnly: true, editing: null }, dlg: null };
 
   // ---------- storage ----------
-  const key = (url) => 'ccb:v1:' + url;
-  const save = () => { try { localStorage.setItem(key(S.url), JSON.stringify(S.st)); localStorage.setItem('ccb:last', S.url); } catch { /* private mode */ } };
-  const saved = (url) => { try { const v = JSON.parse(localStorage.getItem(key(url))); return v && v.plan ? v : null; } catch { return null; } };
+  const key = (url, track) => 'ccb:v1:' + url + (track ? '#' + track : '');
+  const save = () => { try { localStorage.setItem(key(S.url, S.track), JSON.stringify(S.st)); localStorage.setItem('ccb:last', S.url); localStorage.setItem('ccb:lastTrack', S.track || ''); } catch { /* private mode */ } };
+  const saved = (url, track) => { try { const v = JSON.parse(localStorage.getItem(key(url, track))); return v && v.plan ? v : null; } catch { return null; } };
 
   // ---------- loading ----------
   function setMsg(text, kind) { const m = $('#loadMsg'); m.textContent = text || ''; m.className = 'loadmsg' + (kind === 'err' ? ' err' : ''); }
 
-  async function load(url, shared) {
+  async function load(url, shared, track) {
     setMsg('Reading the chart…');
     const slow = setTimeout(() => setMsg('Reading the chart. The first request also downloads the OpenCourseWare course list, which takes about 20 seconds.'), 3500);
     try {
-      const r = await fetch('/api/chart?url=' + encodeURIComponent(url));
+      const r = await fetch('/api/chart?url=' + encodeURIComponent(url) + (track ? '&track=' + encodeURIComponent(track) : ''));
       const j = await r.json();
       if (!r.ok) throw new Error(j.error || 'Couldn\'t read that chart.');
-      S.model = E.buildModel(j); S.url = j.url;
-      S.st = shared || saved(j.url) || E.newState();
+      S.model = E.buildModel(j); S.url = j.url; S.track = j.track || ''; S.tracks = j.tracks || [];
+      S.st = shared || saved(j.url, S.track) || E.newState();
       S.ui.facet = 'all'; S.ui.q = ''; S.ui.editing = null;
       $('#chartUrl').value = j.url;
       $('#q').value = '';
@@ -41,6 +41,9 @@
     const m = S.model, ev = E.evaluate(m, S.st);
     $('#chartTitle').textContent = m.title;
     $('#chartLink').href = m.url;
+    const tr = $('#tracks');
+    tr.hidden = S.tracks.length < 2;
+    tr.innerHTML = S.tracks.length < 2 ? '' : S.tracks.map((t) => `<button type="button" class="chip" data-action="track" data-id="${esc(t.id)}" aria-pressed="${t.id === S.track}">${esc(t.label)}</button>`).join('');
     const met = ev.results.filter((r) => r.ok).length, total = ev.results.length;
     $('#summary').innerHTML = `<div class="line"><span>${met} of ${total} requirements met</span><span>${ev.plan.length} subjects${ev.units ? `, ${ev.units}${ev.unknownUnits ? '+' : ''} units` : ''}</span></div><div class="bar"><i style="width:${total ? Math.round((met / total) * 100) : 0}%"></i></div>`;
 
@@ -202,7 +205,8 @@
     else if (a === 'use-result') { const o = $('#mdResults')._results[+b.dataset.i]; S.st.overrides[S.dlg] = { decision: 'custom', ocw: o }; $('#matchDialog').close(); commit(); }
     else if (a === 'copy-notion') copy(E.toMarkdown(S.model, S.st), 'Copied. Paste it into Notion.');
     else if (a === 'copy-list') copy(E.toList(S.model, S.st), 'Copied the course list');
-    else if (a === 'copy-link') copy(location.origin + location.pathname + '#s=' + E.encodeState(S.url, S.st), 'Copied the share link');
+    else if (a === 'track') { if (b.dataset.id !== S.track) load(S.url, null, b.dataset.id); }
+    else if (a === 'copy-link') copy(location.origin + location.pathname + '#s=' + E.encodeState(S.url, S.st, S.track), 'Copied the share link');
     else if (a === 'print') window.print();
   });
 
@@ -224,8 +228,8 @@
 
   // ---------- start: share link > last chart ----------
   const m = location.hash.match(/^#s=(.+)$/), shared = m && E.decodeState(m[1]);
-  if (shared && shared.url) { $('#chartUrl').value = shared.url; load(shared.url, shared.state); }
-  else { try { const last = localStorage.getItem('ccb:last'); if (last) { $('#chartUrl').value = last; load(last); } } catch { /* ignore */ } }
+  if (shared && shared.url) { $('#chartUrl').value = shared.url; load(shared.url, shared.state, shared.track); }
+  else { try { const last = localStorage.getItem('ccb:last'); if (last) { $('#chartUrl').value = last; load(last, null, localStorage.getItem('ccb:lastTrack') || ''); } } catch { /* ignore */ } }
 
   window.__ccb = { S, render }; // handy for debugging in the console
 })();

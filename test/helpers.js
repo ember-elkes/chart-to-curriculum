@@ -52,6 +52,35 @@ ${list([row('21L.000', 'Writing About Literature', { joint: true, hours: '12' })
 ${list([row('21L.400', 'Medical Narratives', { hours: '12' }), row('21L.430', 'Popular Culture and Narrative', { hours: '12' }), row('21L.431', 'Shakespeare on Film and Media', { hours: '12' }), row('21L.432', 'Understanding Television', { joint: true, hours: '12' }), row('21L.451', 'Literary Theory', { hours: '12' })])}
 </div></body></html>`;
 
+
+// Two-track chart (Course 24-2), same structure as the live page: an EMPTY #textcontainer stub, one panel per track,
+// an "or" row, several "Select one of the following" lists in one table, and "A coherent program of N additional subjects".
+const hdr = (t) => `<tr class="even areaheader firstrow"><td colspan="2"><span class="courselistcomment areaheader">${t}</span></td><td align="right"><strong>Units</strong></td></tr>`;
+const sel = (t, hours) => `<tr class="even"><td colspan="2"><span class="courselistcomment areasubheader"><i>${t}</i></span></td><td class="hourscol">${hours}</td></tr>`;
+const orRow = (c, title) => `<tr class="orclass odd"><td class="codecol orclass">or&nbsp;${code(c)}</td><td colspan="2"> ${title}</td></tr>`;
+const free = (t, sup, hours) => `<tr class="even"><td colspan="2"><span class="courselistcomment">${t}</span> <sup>${sup}</sup></td><td class="hourscol">${hours}</td></tr>`;
+const tail = `<tr class="odd areaheader"><td colspan="2"><span class="courselistcomment areaheader">Units in Major</span></td><td class="hourscol">132</td></tr><tr class="listsum"><td colspan="2"><span class="courselistcomment">Total Units Beyond the GIRs Required for SB Degree</span></td><td class="hourscol">180</td></tr>`;
+const panel = (id, track, rows, note) => `<div id="${id}textcontainer" class="page_content tab_content"><h2>Bachelor of Science in Linguistics and Philosophy (${track} Track)</h2><h3>General Institute Requirements (GIRs)</h3>${GIR}
+<h3>Departmental Program</h3><p>Choose at least two subjects in the major that are designated as communication-intensive (CI-M) to fulfill the Communication Requirement.</p>
+<table class="sc_courselist hide-thead"><tbody>${rows.join('')}${tail}</tbody></table>
+<table class="sc_footnotes hide-thead"><tbody><tr><td valign="top" class="symcol"><em><sup>1</sup></em></td><td class="notecol"><em><p>${note}</p></em></td></tr></tbody></table></div>`;
+const chart24 = `<html><body><h1>Linguistics and Philosophy (Course 24-2)</h1>
+<ul class="clearfix" role="tablist"><li class="active"><a href="#linguisticstextcontainer" role="tab">Linguistics</a></li><li><a href="#philosophytextcontainer" role="tab">Philosophy</a></li></ul>
+<div id="textcontainer" class="page_content tab_content"></div>
+${panel('linguistics', 'Linguistics', [
+  hdr('Required Subjects'), row('24.900', 'Introduction to Linguistics', { hours: '12' }), orRow('24.9000', 'How Language Works'),
+  row('24.901', 'Language and Its Structure I: Phonology', { hours: '12' }), row('24.918', 'Workshop in Linguistic Research (CI-M)', { hours: '12' }),
+  sel('Select one of the following linguistic analysis subjects:', '12'), row('24.909', 'Field Methods in Linguistics (CI-M)', { indent: true }), row('24.910', 'Advanced Topics in Linguistic Analysis (CI-M)', { indent: true }),
+  sel('Select one of the following philosophy, cognition, and computation subjects:', '12'), row('6.3900', 'Introduction to Machine Learning', { indent: true }), row('24.09', 'Minds and Machines', { indent: true }), row('24.141', 'Logic I', { indent: true }),
+  `<tr class="odd areaheader"><td colspan="2"><span class="courselistcomment areaheader">Restricted Electives</span></td><td class="hourscol"></td></tr>`,
+  free('A coherent program of three additional subjects from linguistics, philosophy, or a related area', 3, '36')], 'Students who do not use 24.909 may count a sixth subject toward the HASS Requirement.')}
+${panel('philosophy', 'Philosophy', [
+  hdr('Required Subjects'), row('24.900', 'Introduction to Linguistics', { hours: '12' }), row('24.251', 'Introduction to Philosophy of Language (CI-M)', { hours: '12' }),
+  sel('Select one of the following Logic subjects:', '12'), row('24.118', 'Paradox and Infinity', { indent: true }), row('24.141', 'Logic I', { indent: true }),
+  `<tr class="odd areaheader"><td colspan="2"><span class="courselistcomment areaheader">Restricted Electives</span></td><td class="hourscol"></td></tr>`,
+  free('A coherent program of four additional subjects, at least two of which must be in Linguistics and Philosophy, approved by the major advisor.', 4, '48')], 'Subject has prerequisites outside of the program.')}
+</body></html>`;
+
 // OCW feed in the shape returned by api.learn.mit.edu (after slimResource)
 const feedRes = (title, numbers, term = 'Fall', year = 2019) => ({
   title, url: 'https://ocw.mit.edu/courses/' + numbers[0].toLowerCase().replace('.', '-') + '-' + term.toLowerCase() + '-' + year + '/', topics: [],
@@ -66,6 +95,8 @@ const feed = [
   feedRes('Studies in Fiction: Stowe', ['21L.702']), feedRes('Studies in Drama', ['21L.703J', 'CMS.840']), feedRes('Literary Theory', ['21L.451']),
   feedRes('At the Limit: Violence in Contemporary Fiction', ['21L.435']), // number reused: chart has 21L.435 as a different subject
   feedRes('Understanding Television', ['21L.432J', 'CMS.100']),
+  feedRes('Introduction to Linguistics', ['24.900']), feedRes('How Language Works', ['24.9000']), feedRes('Language and Its Structure I: Phonology', ['24.901']),
+  feedRes('Logic I', ['24.141']), feedRes('Minds and Machines', ['24.09']), feedRes('Introduction to Machine Learning', ['6.3900']),
 ];
 
 // Minimal fetch double: serves chart HTML by URL and the OCW feed (single page).
@@ -81,4 +112,4 @@ function mockFetch({ charts = {}, counters = {} } = {}) {
   };
 }
 
-module.exports = { chart21A, chart21L, feed, mockFetch };
+module.exports = { chart21A, chart21L, chart24, feed, mockFetch };
