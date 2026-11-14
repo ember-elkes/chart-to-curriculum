@@ -122,6 +122,13 @@ with sync_playwright() as p:
     page.wait_for_selector('#chartTitle:has-text("Anthropology")')
     check('single-track charts have no switcher', page.locator('#tracks').is_hidden())
 
+    # graduate chart with no section headers (SM Linguistics): readable, no "couldn't read" notice
+    page.fill('#chartUrl', 'https://catalog.mit.edu/degree-charts/sm-linguistics/'); page.click('text=Read chart')
+    page.wait_for_selector('#chartTitle:has-text("Master of Science in Linguistics")')
+    page.wait_for_selector('.rule')
+    check('SM chart has no "couldn\'t read every requirement" notice', "couldn't read every requirement" not in page.inner_text('#notice'), page.inner_text('#notice'))
+    check('SM chart shows its two rules', page.locator('.rule-label').all_inner_texts() == ['Choose 1 from Program Requirements', 'Program Requirements: take all 3'], page.locator('.rule-label').all_inner_texts())
+
     b.close()
 
 errors=[e for e in errors if 'status of 400' not in e]

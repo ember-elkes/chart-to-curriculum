@@ -81,6 +81,10 @@ ${panel('philosophy', 'Philosophy', [
   free('A coherent program of four additional subjects, at least two of which must be in Linguistics and Philosophy, approved by the major advisor.', 4, '48')], 'Subject has prerequisites outside of the program.')}
 </body></html>`;
 
+// Master of Science in Linguistics: real catalog markup (captured live). No section headers, no "Select" row,
+// the pick list is introduced by "At least one of the following subjects:", and the URL names no course number.
+const chartSM = `<html><body><h1>Master of Science in Linguistics</h1><div id="textcontainer"><p><a href="/schools/x/#linguistics-ms">Department of Linguistics and Philosophy</a></p><h2>Program Requirements</h2><table class="sc_courselist hide-thead"><tbody><tr class="even firstrow"><td class="codecol"><a title="24.900" class="bubblelink code">24.900</a></td><td>Introduction to Linguistics <sup>1</sup></td><td class="hourscol">12</td></tr><tr class="odd"><td colspan="2"><span class="courselistcomment">At least one of the following subjects:</span></td><td class="hourscol">12-36</td></tr><tr class="even"><td class="codecol"><div style="margin-left: 20px;"><a title="24.931" class="bubblelink code">24.931</a></div></td><td>Language and Its Structure I: Phonology <sup>1</sup></td><td class="hourscol"></td></tr><tr class="odd"><td class="codecol"><div style="margin-left: 20px;"><a title="24.932" class="bubblelink code">24.932</a></div></td><td>Language and Its Structure II: Syntax <sup>1</sup></td><td class="hourscol"></td></tr><tr class="even"><td class="codecol"><div style="margin-left: 20px;"><a title="24.933" class="bubblelink code">24.933</a></div></td><td>Language and Its Structure III: Semantics and Pragmatics <sup>1</sup></td><td class="hourscol"></td></tr><tr class="odd"><td class="codecol"><a title="24.921" class="bubblelink code">24.921</a></td><td>Independent Study: Linguistics (Focused on the student's language) <sup>2</sup></td><td class="hourscol">24</td></tr><tr class="even lastrow"><td class="codecol"><a title="24.THG" class="bubblelink code">24.THG</a></td><td>Graduate Thesis <sup>3</sup></td><td class="hourscol">72</td></tr><tr class="listsum"><td colspan="2">Total Units</td><td class="hourscol">120-144</td></tr></tbody></table><table class="sc_footnotes hide-thead"><tbody><tr><td class="symcol"><em><sup>1</sup></em></td><td class="notecol"><em><p>If the student has already completed equivalent coursework in this area, a more advanced class in the same area is taken instead.</p></em></td></tr><tr><td class="symcol"><em><sup>2</sup></em></td><td class="notecol"><em><p>Students register for a minimum of 24 units of 24.921 Independent Study: Linguistics, focused on their own language.</p></em></td></tr></tbody></table></div></body></html>`;
+
 // OCW feed in the shape returned by api.learn.mit.edu (after slimResource)
 const feedRes = (title, numbers, term = 'Fall', year = 2019) => ({
   title, url: 'https://ocw.mit.edu/courses/' + numbers[0].toLowerCase().replace('.', '-') + '-' + term.toLowerCase() + '-' + year + '/', topics: [],
@@ -96,6 +100,7 @@ const feed = [
   feedRes('At the Limit: Violence in Contemporary Fiction', ['21L.435']), // number reused: chart has 21L.435 as a different subject
   feedRes('Understanding Television', ['21L.432J', 'CMS.100']),
   feedRes('Introduction to Linguistics', ['24.900']), feedRes('How Language Works', ['24.9000']), feedRes('Language and Its Structure I: Phonology', ['24.901']),
+  feedRes('Language and Its Structure II: Syntax', ['24.902']), feedRes('Language and Its Structure III: Semantics and Pragmatics', ['24.933']),
   feedRes('Logic I', ['24.141']), feedRes('Minds and Machines', ['24.09']), feedRes('Introduction to Machine Learning', ['6.3900']),
 ];
 
@@ -112,4 +117,4 @@ function mockFetch({ charts = {}, counters = {} } = {}) {
   };
 }
 
-module.exports = { chart21A, chart21L, chart24, feed, mockFetch };
+module.exports = { chart21A, chart21L, chart24, chartSM, feed, mockFetch };

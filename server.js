@@ -31,7 +31,12 @@ function httpError(status, message) { const e = new Error(message); e.status = s
 function deptCodeOf(chart, url) {
   // "Course 21L", "Course 24-2" (a track of Course 24), "course-6-3" -> department is the part before any "-<digit>"
   const m = (chart.title || '').match(/Course\s+([0-9A-Za-z]+?)(?:-\d+)?\)/) || url.match(/course-([0-9a-z]+?)(?:-\d+)?\/?$/i);
-  return m ? m[1].toUpperCase() : null;
+  if (m) return m[1].toUpperCase();
+  // Graduate charts ("sm-linguistics") name no course number: use the most common prefix among the chart's own subjects
+  const counts = {};
+  chart.groups.forEach((g) => g.items.forEach((i) => { const p = i.type === 'course' && String(i.code).split('.')[0]; if (p) counts[p] = (counts[p] || 0) + 1; }));
+  const top = Object.entries(counts).sort((a, b) => b[1] - a[1])[0];
+  return top ? top[0].toUpperCase() : null;
 }
 
 function createApp({ fetchFn = fetch, dataDir = process.env.DATA_DIR || path.join(__dirname, 'data'), now = Date.now, rateLimit = 40 } = {}) {

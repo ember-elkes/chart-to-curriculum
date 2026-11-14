@@ -4,11 +4,12 @@ const fs = require('fs'), os = require('os'), path = require('path');
 const { JSDOM } = require('jsdom');
 const { parseDegreeChart, parseDegreeChartTracks } = require('../lib/parser');
 const { createApp, normalizeChartUrl, deptCodeOf } = require('../server');
-const { chart21A, chart21L, chart24, mockFetch } = require('./helpers');
+const { chart21A, chart21L, chart24, chartSM, mockFetch } = require('./helpers');
 const E = require('../public/engine');
 
 const U21A = 'https://catalog.mit.edu/degree-charts/anthropology-course-21a/';
 const U21L = 'https://catalog.mit.edu/degree-charts/literature-course-21l/';
+const USM = 'https://catalog.mit.edu/degree-charts/sm-linguistics/';
 const U24 = 'https://catalog.mit.edu/degree-charts/linguistics-philosophy-course-24-2/';
 const parse = (html) => parseDegreeChart(new JSDOM(html).window.document);
 
@@ -146,4 +147,46 @@ test('deptCodeOf: track and plain course numbers', () => {
   assert.equal(deptCodeOf({ title: 'Literature (Course 21L)' }, U21L), '21L');
   assert.equal(deptCodeOf({ title: '' }, 'https://catalog.mit.edu/degree-charts/electrical-engineering-course-6-3/'), '6');
   assert.equal(deptCodeOf({ title: '' }, U21A), '21A');
+});
+
+
+// ---- graduate chart with no headers (SM Linguistics) ----
+test('parser: "At least one of the following" is a pick rule, and a header-less list is the requirement', () => {
+  const c = parse(chartSM);
+  assert.equal(c.groups.length, 1);
+  const g = c.groups[0];
+  assert.equal(g.kind, 'requirement'); assert.equal(g.rule.count, 1);
+  assert.deepEqual(g.items.map((i) => [i.code, i.option]), [['24.900', false], ['24.931', true], ['24.932', true], ['24.933', true], ['24.921', false], ['24.THG', false]]);
+  assert.deepEqual(c.needsReview, []);
+  assert.equal(c.totals.at(-1).units, '120-144');
+});
+
+test('parser: other wordings of a pick, and wordings that are not picks', () => {
+  const t = (label) => parse(`<html><body><div id="textcontainer"><h2>Program</h2><table class="sc_courselist"><tbody><tr><td colspan="2"><span class="courselistcomment">${label}</span></td><td class="hourscol">12</td></tr><tr><td class="codecol"><div style="margin-left: 20px;"><a title="1.00" class="code">1.00</a></div></td><td>Intro</td><td class="hourscol"></td></tr></tbody></table></div></body></html>`).groups[0];
+  assert.equal(t('One of the following:').rule.count, 1);
+  assert.equal(t('Two of the following subjects').rule.count, 2);
+  assert.equal(t('Choose one:').rule.count, 1);
+  assert.equal(t('At least two of the following:').rule.count, 2);
+  assert.equal(t('At least three subjects from the department').rule, null, 'not a pick');
+  assert.equal(t('At least three subjects from the department').items[0].type, 'slots');
+});
+
+test('server + engine: SM Linguistics gets a department (24) and readable rules', async () => {
+  const app = createApp({ fetchFn: mockFetch({ charts: { [USM]: chartSM } }), dataDir: fs.mkdtempSync(path.join(os.tmpdir(), 'ccb-')) });
+  const server = app.listen(0); const base = 'http://127.0.0.1:' + server.address().port;
+  try {
+    const j = await (await fetch(base + '/api/chart?url=' + encodeURIComponent(USM))).json();
+    assert.equal(j.deptCode, '24'); assert.deepEqual(j.tracks, [{ id: '', label: '' }]);
+    const model = E.buildModel(j);
+    assert.deepEqual(model.rules.map((r) => r.label), ['Choose 1 from Program Requirements', 'Program Requirements: take all 3']);
+    const ev = E.evaluate(model, { ...E.newState(), plan: ['24.900', '24.932', '24.921', '24.THG'] });
+    assert.ok(ev.results.every((r) => r.ok), 'a complete plan meets both rules');
+    assert.equal(E.evaluate(model, E.newState()).results.filter((r) => r.ok).length, 0);
+  } finally { server.close(); }
+});
+
+test('deptCodeOf: falls back to the most common course prefix when the title and URL have no course number', () => {
+  const chart = { title: 'Master of Science in Linguistics', groups: [{ items: [{ type: 'course', code: '24.900' }, { type: 'course', code: '24.931' }, { type: 'course', code: '6.3900' }, { type: 'slots' }] }] };
+  assert.equal(deptCodeOf(chart, USM), '24');
+  assert.equal(deptCodeOf({ title: '', groups: [] }, USM), null);
 });
